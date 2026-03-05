@@ -33,7 +33,6 @@ fileInput.addEventListener('change', (e) => {
         selectedBook = null;
         renderBookList();
         renderEditor();
-        saveToChromeStorage();
     };
     reader.readAsText(file);
 });
@@ -335,15 +334,6 @@ bookFilter.addEventListener('input', () => {
     renderBookList();
 });
 
-// ── Save to Chrome Storage ──
-function saveToChromeStorage() {
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.set({ kindleClippings: allBooks }, () => {
-            console.log('Clippings saved to chrome storage');
-        });
-    }
-}
-
 // ── Toolbar: Copy as plain text ──
 document.getElementById('btnCopyText').addEventListener('click', () => {
     const booksToExport = selectedBook ? { [selectedBook]: allBooks[selectedBook] } : allBooks;
@@ -381,40 +371,29 @@ document.getElementById('btnCopyHtml').addEventListener('click', () => {
 
 // ── Toolbar: Send to OneNote ──
 document.getElementById('btnSendOneNote').addEventListener('click', () => {
-    // Build rich HTML content for OneNote
-    const styledHtml = `<html><head><style>${getClipStyles()}</style></head><body>${editor.innerHTML}</body></html>`;
+    const btn = document.getElementById('btnSendOneNote');
+    const orig = btn.innerHTML;
 
-    // Copy as rich HTML to clipboard
-    const blob = new Blob([styledHtml], { type: 'text/html' });
-    const plainBlob = new Blob([editor.innerText], { type: 'text/plain' });
+    // Copy rich HTML to clipboard for pasting into OneNote
+    const styledHtml = `<html><head><style>${getClipStyles()}</style></head><body>${editor.innerHTML}</body></html>`;
+    const htmlBlob = new Blob([styledHtml], { type: 'text/html' });
+    const textBlob = new Blob([editor.innerText], { type: 'text/plain' });
 
     navigator.clipboard.write([
-        new ClipboardItem({
-            'text/html': blob,
-            'text/plain': plainBlob
-        })
+        new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })
     ]).then(() => {
-        const btn = document.getElementById('btnSendOneNote');
-        const orig = btn.innerHTML;
         btn.innerHTML = '✓ Copied! Opening OneNote...';
-
-        // Open OneNote Online — user can paste with Ctrl+V
         window.open('https://www.onenote.com/notebooks', '_blank');
-
         setTimeout(() => btn.innerHTML = orig, 3000);
-    }).catch((err) => {
-        console.error('Clipboard write failed:', err);
-        // Fallback: select editor content and copy
-        const selection = window.getSelection();
+    }).catch(() => {
+        // Fallback: select and copy editor content
+        const sel = window.getSelection();
         const range = document.createRange();
         range.selectNodeContents(editor);
-        selection.removeAllRanges();
-        selection.addRange(range);
+        sel.removeAllRanges();
+        sel.addRange(range);
         document.execCommand('copy');
-        selection.removeAllRanges();
-
-        const btn = document.getElementById('btnSendOneNote');
-        const orig = btn.innerHTML;
+        sel.removeAllRanges();
         btn.innerHTML = '✓ Copied! Opening OneNote...';
         window.open('https://www.onenote.com/notebooks', '_blank');
         setTimeout(() => btn.innerHTML = orig, 3000);

@@ -1,27 +1,15 @@
 {
   "name": "Kindle Clipping Reader",
-  "description": "Import, browse, and organize Kindle clippings with highlights, notes, and bookmarks. Export to OneNote or clipboard.",
+  "description": "Import, browse, and organize Kindle clippings with highlights, notes, and bookmarks. Copy to clipboard.",
   "version": "1.0",
   "manifest_version": 3,
-  "permissions": [
-	"tabs",
-  "downloads",
-  "storage",
-  "identity"
-],
+    "permissions": [],
   
   "action": {},
   
   "background": {
     "service_worker": "background.js"
   },
-  
-  "web_accessible_resources": [
-    {
-      "matches": ["<all_urls>"],
-      "resources": ["note.html"]
-    }
-  ],
   
   "icons": {
     "16": "images/icon-16.png",
