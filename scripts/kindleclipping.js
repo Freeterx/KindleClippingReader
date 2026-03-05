@@ -6,6 +6,7 @@ const bookList = document.getElementById('bookList');
 const bookCountBadge = document.getElementById('bookCountBadge');
 const editor = document.getElementById('editor');
 const statsBar = document.getElementById('statsBar');
+const contentSearch = document.getElementById('contentSearch');
 
 // ── State ──
 let allBooks = {};       // { bookTitle: [ {type, location, page, date, content}, ... ] }
@@ -242,12 +243,26 @@ function renderEditor() {
         booksToRender = { [selectedBook]: allBooks[selectedBook] };
     }
 
+    // Filter clips by content search text
+    const searchText = contentSearch ? contentSearch.value.trim().toLowerCase() : '';
+    if (searchText) {
+        const filtered = {};
+        for (const [title, clips] of Object.entries(booksToRender)) {
+            const matched = clips.filter(c =>
+                (c.content && c.content.toLowerCase().includes(searchText)) ||
+                (c.attachedNote && c.attachedNote.toLowerCase().includes(searchText))
+            );
+            if (matched.length > 0) filtered[title] = matched;
+        }
+        booksToRender = filtered;
+    }
+
     const bookTitles = Object.keys(booksToRender);
     if (bookTitles.length === 0) {
         editor.innerHTML = `<div class="empty-state">
             <div class="icon">📂</div>
-            <div class="title">No clippings to display</div>
-            <div class="subtitle">Select a book from the left panel</div>
+            <div class="title">${searchText ? 'No matching clippings' : 'No clippings to display'}</div>
+            <div class="subtitle">${searchText ? 'Try a different search term' : 'Select a book from the left panel'}</div>
         </div>`;
         updateStats(0, 0, 0, 0);
         return;
@@ -332,6 +347,11 @@ function updateStats(books, highlights, notes, bookmarks) {
 // ── Filter Books ──
 bookFilter.addEventListener('input', () => {
     renderBookList();
+});
+
+// ── Content Search ──
+contentSearch.addEventListener('input', () => {
+    renderEditor();
 });
 
 // ── Toolbar: Copy as plain text ──
