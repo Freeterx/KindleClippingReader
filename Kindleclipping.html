@@ -605,6 +605,91 @@
             background: #27ae60;
         }
 
+        /* ── Pagination Bar ── */
+        .pagination-bar {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        .page-btn {
+            min-width: 30px;
+            height: 30px;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #555;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .page-btn:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        .page-btn.active {
+            background: #3498db;
+            color: #fff;
+            border-color: #2980b9;
+            font-weight: 600;
+        }
+
+        .page-numbers {
+            display: inline-flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .page-numbers .page-ellipsis {
+            padding: 0 4px;
+            color: #999;
+            font-size: 13px;
+        }
+
+        .page-info {
+            font-size: 12px;
+            color: #777;
+            margin-left: 12px;
+        }
+
+        .page-size-group {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #777;
+        }
+
+        .page-size-group select {
+            padding: 3px 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            outline: none;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        .page-size-group select:focus {
+            border-color: #3498db;
+        }
+
         /* Scrollbar */
         #editor::-webkit-scrollbar {
             width: 8px;
@@ -628,6 +713,7 @@
             resize: horizontal;
             overflow: hidden;
         }
+
     </style>
 </head>
 
@@ -701,6 +787,25 @@
                     <div class="title">No clippings loaded</div>
                     <div class="subtitle">Select a Kindle clipping file (.txt) from the top bar to get started</div>
                 </div>
+            </div>
+
+            <div class="pagination-bar" id="paginationBar" style="display:none;">
+                <button class="page-btn" id="pageFirst" title="First page">«</button>
+                <button class="page-btn" id="pagePrev" title="Previous page">‹</button>
+                <span class="page-numbers" id="pageNumbers"></span>
+                <button class="page-btn" id="pageNext" title="Next page">›</button>
+                <button class="page-btn" id="pageLast" title="Last page">»</button>
+                <span class="page-info" id="pageInfo"></span>
+                <span class="page-size-group">
+                    <label for="pageSize">Per page:</label>
+                    <select id="pageSize">
+                        <option value="10">10</option>
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="0">All</option>
+                    </select>
+                </span>
             </div>
 
             <div class="stats-bar" id="statsBar">

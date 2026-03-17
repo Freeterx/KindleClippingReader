@@ -7,10 +7,16 @@ const bookCountBadge = document.getElementById('bookCountBadge');
 const editor = document.getElementById('editor');
 const statsBar = document.getElementById('statsBar');
 const contentSearch = document.getElementById('contentSearch');
+const paginationBar = document.getElementById('paginationBar');
+const pageNumbers = document.getElementById('pageNumbers');
+const pageInfo = document.getElementById('pageInfo');
+const pageSizeSelect = document.getElementById('pageSize');
 
 // ── State ──
 let allBooks = {};       // { bookTitle: [ {type, location, page, date, content}, ... ] }
 let selectedBook = null; // null = show all, string = specific book title
+let currentPage = 1;
+let itemsPerPage = 20;
 
 // ── File Input Handler ──
 fileInput.addEventListener('change', (e) => {
@@ -32,6 +38,7 @@ fileInput.addEventListener('change', (e) => {
 
         fileStatus.textContent = `✓ ${file.name} — ${bookCount} book${bookCount > 1 ? 's' : ''} loaded`;
         selectedBook = null;
+        currentPage = 1;
         renderBookList();
         renderEditor();
     };
@@ -184,6 +191,44 @@ function mergeNotesWithHighlights(clips) {
     return result;
 }
 
+// ── Get filtered books for rendering ──
+function getFilteredBooks() {
+    let booksToRender = {};
+
+    if (selectedBook === null) {
+        booksToRender = allBooks;
+    } else if (allBooks[selectedBook]) {
+        booksToRender = { [selectedBook]: allBooks[selectedBook] };
+    }
+
+    // Filter clips by content search text
+    const searchText = contentSearch ? contentSearch.value.trim().toLowerCase() : '';
+    if (searchText) {
+        const filtered = {};
+        for (const [title, clips] of Object.entries(booksToRender)) {
+            const matched = clips.filter(c =>
+                (c.content && c.content.toLowerCase().includes(searchText)) ||
+                (c.attachedNote && c.attachedNote.toLowerCase().includes(searchText))
+            );
+            if (matched.length > 0) filtered[title] = matched;
+        }
+        booksToRender = filtered;
+    }
+
+    return booksToRender;
+}
+
+// ── Flatten books into a flat list of {bookTitle, clip} for pagination ──
+function flattenClips(booksToRender) {
+    const flat = [];
+    for (const [title, clips] of Object.entries(booksToRender)) {
+        for (const clip of clips) {
+            flat.push({ bookTitle: title, clip });
+        }
+    }
+    return flat;
+}
+
 // ── Render Book List ──
 function renderBookList() {
     const titles = Object.keys(allBooks);
@@ -227,6 +272,7 @@ function renderBookList() {
             } else {
                 selectedBook = bookKey;
             }
+            currentPage = 1;
             renderBookList();
             renderEditor();
         });
@@ -235,29 +281,10 @@ function renderBookList() {
 
 // ── Render Editor ──
 function renderEditor() {
-    let booksToRender = {};
-
-    if (selectedBook === null) {
-        booksToRender = allBooks;
-    } else if (allBooks[selectedBook]) {
-        booksToRender = { [selectedBook]: allBooks[selectedBook] };
-    }
-
-    // Filter clips by content search text
-    const searchText = contentSearch ? contentSearch.value.trim().toLowerCase() : '';
-    if (searchText) {
-        const filtered = {};
-        for (const [title, clips] of Object.entries(booksToRender)) {
-            const matched = clips.filter(c =>
-                (c.content && c.content.toLowerCase().includes(searchText)) ||
-                (c.attachedNote && c.attachedNote.toLowerCase().includes(searchText))
-            );
-            if (matched.length > 0) filtered[title] = matched;
-        }
-        booksToRender = filtered;
-    }
-
+    const booksToRender = getFilteredBooks();
     const bookTitles = Object.keys(booksToRender);
+    const searchText = contentSearch ? contentSearch.value.trim().toLowerCase() : '';
+
     if (bookTitles.length === 0) {
         editor.innerHTML = `<div class="empty-state">
             <div class="icon">📂</div>
@@ -265,26 +292,61 @@ function renderEditor() {
             <div class="subtitle">${searchText ? 'Try a different search term' : 'Select a book from the left panel'}</div>
         </div>`;
         updateStats(0, 0, 0, 0);
+        paginationBar.style.display = 'none';
         return;
     }
 
-    let html = '';
-    let totalHighlights = 0, totalNotes = 0, totalBookmarks = 0;
+    // Flatten all clips for pagination
+    const allFlat = flattenClips(booksToRender);
+    const totalClips = allFlat.length;
 
-    for (const title of bookTitles) {
-        const entries = booksToRender[title];
-        const hl = entries.filter(e => e.type === 'highlight' || e.type === 'highlight-with-note').length;
-        const nt = entries.filter(e => e.type === 'note' || e.type === 'highlight-with-note').length;
-        const bk = entries.filter(e => e.type === 'bookmark').length;
-        totalHighlights += hl;
-        totalNotes += nt;
-        totalBookmarks += bk;
+    // Calculate total stats from all clips (not just current page)
+    let totalHighlights = 0, totalNotes = 0, totalBookmarks = 0;
+    for (const { clip } of allFlat) {
+        if (clip.type === 'highlight' || clip.type === 'highlight-with-note') totalHighlights++;
+        if (clip.type === 'note' || clip.type === 'highlight-with-note') totalNotes++;
+        if (clip.type === 'bookmark') totalBookmarks++;
+    }
+
+    // Determine page slice
+    let pageClips;
+    let totalPages;
+
+    if (itemsPerPage === 0) {
+        // Show all
+        pageClips = allFlat;
+        totalPages = 1;
+        currentPage = 1;
+    } else {
+        totalPages = Math.ceil(totalClips / itemsPerPage);
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIdx = (currentPage - 1) * itemsPerPage;
+        const endIdx = startIdx + itemsPerPage;
+        pageClips = allFlat.slice(startIdx, endIdx);
+    }
+
+    // Group the page clips back by book title (preserving order)
+    const pageBooks = new Map();
+    for (const { bookTitle, clip } of pageClips) {
+        if (!pageBooks.has(bookTitle)) {
+            pageBooks.set(bookTitle, []);
+        }
+        pageBooks.get(bookTitle).push(clip);
+    }
+
+    // Render HTML
+    let html = '';
+
+    for (const [title, entries] of pageBooks) {
+        const totalForBook = booksToRender[title].length;
 
         html += `<div class="book-group">`;
         html += `<div class="book-title-header">`;
         html += `<span class="book-icon">📖</span>`;
         html += `<span>${escapeHtml(title)}</span>`;
-        html += `<span class="book-count">${entries.length} clip${entries.length > 1 ? 's' : ''}</span>`;
+        html += `<span class="book-count">${totalForBook} clip${totalForBook > 1 ? 's' : ''}</span>`;
         html += `</div>`;
 
         for (const clip of entries) {
@@ -325,8 +387,146 @@ function renderEditor() {
     }
 
     editor.innerHTML = html;
+    editor.scrollTop = 0;
     updateStats(bookTitles.length, totalHighlights, totalNotes, totalBookmarks);
+    renderPagination(totalClips, totalPages);
 }
+
+// ── Render Pagination Controls ──
+function renderPagination(totalClips, totalPages) {
+    if (totalPages <= 1 && itemsPerPage === 0) {
+        paginationBar.style.display = 'none';
+        // Still show the bar if items exist, for page size selection
+        if (totalClips > 10) {
+            paginationBar.style.display = 'flex';
+            pageNumbers.innerHTML = '';
+            document.getElementById('pageFirst').style.display = 'none';
+            document.getElementById('pagePrev').style.display = 'none';
+            document.getElementById('pageNext').style.display = 'none';
+            document.getElementById('pageLast').style.display = 'none';
+            pageInfo.textContent = `Showing all ${totalClips} clippings`;
+        }
+        return;
+    }
+
+    if (totalPages <= 1) {
+        // Only 1 page, but show the bar for page size selection if there are clips
+        paginationBar.style.display = totalClips > 0 ? 'flex' : 'none';
+        pageNumbers.innerHTML = '';
+        document.getElementById('pageFirst').style.display = 'none';
+        document.getElementById('pagePrev').style.display = 'none';
+        document.getElementById('pageNext').style.display = 'none';
+        document.getElementById('pageLast').style.display = 'none';
+        pageInfo.textContent = `Showing ${totalClips} clipping${totalClips !== 1 ? 's' : ''}`;
+        return;
+    }
+
+    paginationBar.style.display = 'flex';
+    document.getElementById('pageFirst').style.display = '';
+    document.getElementById('pagePrev').style.display = '';
+    document.getElementById('pageNext').style.display = '';
+    document.getElementById('pageLast').style.display = '';
+
+    // Enable/disable nav buttons
+    document.getElementById('pageFirst').disabled = currentPage === 1;
+    document.getElementById('pagePrev').disabled = currentPage === 1;
+    document.getElementById('pageNext').disabled = currentPage === totalPages;
+    document.getElementById('pageLast').disabled = currentPage === totalPages;
+
+    // Build page number buttons with ellipsis
+    let numbersHtml = '';
+    const maxVisible = 7; // max page buttons to show
+
+    if (totalPages <= maxVisible) {
+        for (let i = 1; i <= totalPages; i++) {
+            numbersHtml += `<button class="page-btn${i === currentPage ? ' active' : ''}" data-page="${i}">${i}</button>`;
+        }
+    } else {
+        // Always show first page
+        numbersHtml += `<button class="page-btn${1 === currentPage ? ' active' : ''}" data-page="1">1</button>`;
+
+        let startPage = Math.max(2, currentPage - 2);
+        let endPage = Math.min(totalPages - 1, currentPage + 2);
+
+        // Adjust range to show at least 5 middle buttons
+        if (currentPage <= 3) {
+            endPage = Math.min(totalPages - 1, 5);
+        }
+        if (currentPage >= totalPages - 2) {
+            startPage = Math.max(2, totalPages - 4);
+        }
+
+        if (startPage > 2) {
+            numbersHtml += `<span class="page-ellipsis">…</span>`;
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            numbersHtml += `<button class="page-btn${i === currentPage ? ' active' : ''}" data-page="${i}">${i}</button>`;
+        }
+
+        if (endPage < totalPages - 1) {
+            numbersHtml += `<span class="page-ellipsis">…</span>`;
+        }
+
+        // Always show last page
+        numbersHtml += `<button class="page-btn${totalPages === currentPage ? ' active' : ''}" data-page="${totalPages}">${totalPages}</button>`;
+    }
+
+    pageNumbers.innerHTML = numbersHtml;
+
+    // Page info text
+    const startItem = (currentPage - 1) * itemsPerPage + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, totalClips);
+    pageInfo.textContent = `${startItem}–${endItem} of ${totalClips}`;
+
+    // Attach click handlers to page number buttons
+    pageNumbers.querySelectorAll('.page-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const p = parseInt(btn.getAttribute('data-page'));
+            if (p && p !== currentPage) {
+                currentPage = p;
+                renderEditor();
+            }
+        });
+    });
+}
+
+// ── Pagination Navigation Handlers ──
+document.getElementById('pageFirst').addEventListener('click', () => {
+    if (currentPage !== 1) {
+        currentPage = 1;
+        renderEditor();
+    }
+});
+
+document.getElementById('pagePrev').addEventListener('click', () => {
+    if (currentPage > 1) {
+        currentPage--;
+        renderEditor();
+    }
+});
+
+document.getElementById('pageNext').addEventListener('click', () => {
+    currentPage++;
+    renderEditor();
+});
+
+document.getElementById('pageLast').addEventListener('click', () => {
+    // Calculate total pages
+    const booksToRender = getFilteredBooks();
+    const totalClips = flattenClips(booksToRender).length;
+    const totalPages = itemsPerPage === 0 ? 1 : Math.ceil(totalClips / itemsPerPage);
+    if (currentPage !== totalPages) {
+        currentPage = totalPages;
+        renderEditor();
+    }
+});
+
+pageSizeSelect.addEventListener('change', () => {
+    itemsPerPage = parseInt(pageSizeSelect.value);
+    currentPage = 1;
+    renderEditor();
+});
 
 // ── Update Stats Bar ──
 function updateStats(books, highlights, notes, bookmarks) {
@@ -351,6 +551,7 @@ bookFilter.addEventListener('input', () => {
 
 // ── Content Search ──
 contentSearch.addEventListener('input', () => {
+    currentPage = 1;
     renderEditor();
 });
 
@@ -375,18 +576,32 @@ document.getElementById('btnCopyText').addEventListener('click', () => {
 
 // ── Toolbar: Copy as rich text (HTML) ──
 document.getElementById('btnCopyHtml').addEventListener('click', () => {
-    const selection = window.getSelection();
-    const range = document.createRange();
-    range.selectNodeContents(editor);
-    selection.removeAllRanges();
-    selection.addRange(range);
-    document.execCommand('copy');
-    selection.removeAllRanges();
+    const inlineHtml = buildInlineStyledHtml();
+    const htmlBlob = new Blob([inlineHtml], { type: 'text/html' });
+    const textBlob = new Blob([editor.innerText], { type: 'text/plain' });
 
-    const btn = document.getElementById('btnCopyHtml');
-    const orig = btn.textContent;
-    btn.textContent = '✓ Copied!';
-    setTimeout(() => btn.textContent = orig, 1500);
+    navigator.clipboard.write([
+        new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })
+    ]).then(() => {
+        const btn = document.getElementById('btnCopyHtml');
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        setTimeout(() => btn.textContent = orig, 1500);
+    }).catch(() => {
+        // Fallback: select and copy editor content
+        const sel = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(editor);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        document.execCommand('copy');
+        sel.removeAllRanges();
+
+        const btn = document.getElementById('btnCopyHtml');
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        setTimeout(() => btn.textContent = orig, 1500);
+    });
 });
 
 // ── Toolbar: Send to OneNote ──
@@ -394,9 +609,9 @@ document.getElementById('btnSendOneNote').addEventListener('click', () => {
     const btn = document.getElementById('btnSendOneNote');
     const orig = btn.innerHTML;
 
-    // Copy rich HTML to clipboard for pasting into OneNote
-    const styledHtml = `<html><head><style>${getClipStyles()}</style></head><body>${editor.innerHTML}</body></html>`;
-    const htmlBlob = new Blob([styledHtml], { type: 'text/html' });
+    // Copy rich HTML with inline styles for OneNote compatibility
+    const inlineHtml = buildInlineStyledHtml();
+    const htmlBlob = new Blob([inlineHtml], { type: 'text/html' });
     const textBlob = new Blob([editor.innerText], { type: 'text/plain' });
 
     navigator.clipboard.write([
@@ -455,6 +670,110 @@ function copyToClipboard(text, btnId) {
     }).catch(() => {
         alert('Failed to copy to clipboard');
     });
+}
+
+// ── Build HTML with inline styles for clipboard compatibility ──
+// OneNote/Word strip <style> blocks and CSS classes; they only honor inline style="" attributes.
+function buildInlineStyledHtml() {
+    let booksToRender = {};
+    if (selectedBook === null) {
+        booksToRender = allBooks;
+    } else if (allBooks[selectedBook]) {
+        booksToRender = { [selectedBook]: allBooks[selectedBook] };
+    }
+
+    const searchText = contentSearch ? contentSearch.value.trim().toLowerCase() : '';
+    if (searchText) {
+        const filtered = {};
+        for (const [title, clips] of Object.entries(booksToRender)) {
+            const matched = clips.filter(c =>
+                (c.content && c.content.toLowerCase().includes(searchText)) ||
+                (c.attachedNote && c.attachedNote.toLowerCase().includes(searchText))
+            );
+            if (matched.length > 0) filtered[title] = matched;
+        }
+        booksToRender = filtered;
+    }
+
+    const bookTitles = Object.keys(booksToRender);
+    if (bookTitles.length === 0) return '<p>No clippings to copy.</p>';
+
+    let html = '<div style="font-family:Segoe UI,Tahoma,Geneva,Verdana,sans-serif;color:#333;">';
+
+    for (const title of bookTitles) {
+        const entries = booksToRender[title];
+
+        // Book group
+        html += '<div style="margin-bottom:24px;">';
+
+        // Book title header
+        html += `<div style="font-size:16px;font-weight:700;color:#2c3e50;padding:8px 0;margin-bottom:8px;border-bottom:2px solid #3498db;">`;
+        html += `<span style="font-size:18px;">📖</span> `;
+        html += `${escapeHtml(title)} `;
+        html += `<span style="font-size:11px;color:#999;font-weight:400;">${entries.length} clip${entries.length > 1 ? 's' : ''}</span>`;
+        html += `</div>`;
+
+        for (const clip of entries) {
+            // Determine entry background and border colors
+            let bgColor, borderLeftColor, borderRightStyle = '';
+            if (clip.type === 'highlight-with-note') {
+                bgColor = '#fef9e7';
+                borderLeftColor = '#f1c40f';
+                borderRightStyle = 'border-right:3px solid #3498db;';
+            } else if (clip.type === 'highlight') {
+                bgColor = '#fef9e7';
+                borderLeftColor = '#f1c40f';
+            } else if (clip.type === 'note') {
+                bgColor = '#eaf2f8';
+                borderLeftColor = '#3498db';
+            } else { // bookmark
+                bgColor = '#f0faf0';
+                borderLeftColor = '#27ae60';
+            }
+
+            html += `<div style="margin-bottom:12px;padding:10px 14px;border-radius:6px;border-left:4px solid ${borderLeftColor};background-color:${bgColor};${borderRightStyle}">`;
+
+            // Meta line
+            html += `<div style="font-size:11px;color:#999;margin-bottom:6px;">`;
+            if (clip.type === 'highlight-with-note') {
+                html += `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;background:#f1c40f;color:#7d6608;">highlight</span> `;
+                html += `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;background:#3498db;color:#fff;">+ note</span>`;
+            } else {
+                let badgeBg, badgeColor;
+                if (clip.type === 'highlight') { badgeBg = '#f1c40f'; badgeColor = '#7d6608'; }
+                else if (clip.type === 'note') { badgeBg = '#3498db'; badgeColor = '#fff'; }
+                else { badgeBg = '#27ae60'; badgeColor = '#fff'; }
+                html += `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;background:${badgeBg};color:${badgeColor};">${clip.type}</span>`;
+            }
+            if (clip.page) html += `<span style="color:#ccc;margin:0 2px;"> · </span><span>Page ${escapeHtml(clip.page)}</span>`;
+            if (clip.location) html += `<span style="color:#ccc;margin:0 2px;"> · </span><span>Loc ${escapeHtml(clip.location)}</span>`;
+            if (clip.date) html += `<span style="color:#ccc;margin:0 2px;"> · </span><span>${escapeHtml(clip.date)}</span>`;
+            html += `</div>`;
+
+            // Content
+            if (clip.content) {
+                const italicStyle = clip.type === 'note' ? 'font-style:italic;' : '';
+                html += `<div style="font-size:14px;line-height:1.5;color:#2c3e50;${italicStyle}">${escapeHtml(clip.content)}</div>`;
+            } else if (clip.type === 'bookmark') {
+                html += `<div style="font-size:14px;line-height:1.5;color:#999;">(bookmark)</div>`;
+            }
+
+            // Attached note
+            if (clip.attachedNote) {
+                html += `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #ccc;">`;
+                html += `<div style="font-size:11px;font-weight:600;color:#2471a3;margin-bottom:3px;">📝 Note:</div>`;
+                html += `<div style="font-size:13px;line-height:1.5;color:#2471a3;font-style:italic;">${escapeHtml(clip.attachedNote)}</div>`;
+                html += `</div>`;
+            }
+
+            html += `</div>`; // close clip-entry
+        }
+
+        html += `</div>`; // close book-group
+    }
+
+    html += '</div>';
+    return html;
 }
 
 function getClipStyles() {
