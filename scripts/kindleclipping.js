@@ -71,29 +71,117 @@ function parseClippings(text) {
         }
         const metaLine = metaLineIndex >= 0 ? lines[metaLineIndex] : (lines[1] || '');
 
-        // Determine clip type (supports English and Chinese Kindle formats)
+        // Determine clip type (multilingual Kindle support)
+        // Supported: English, Chinese, German, French, Spanish, Portuguese, Italian, Dutch, Japanese, Korean, Turkish, Polish, Russian, Swedish
         let clipType = 'highlight';
-        if (/your note/i.test(metaLine) || /笔记/.test(metaLine)) {
+        const metaLower = metaLine.toLowerCase();
+        if (
+            /your note/i.test(metaLine) ||                          // English
+            /笔记/.test(metaLine) ||                                 // Chinese
+            /\bNotiz\b/i.test(metaLine) ||                          // German
+            /\bvotre note\b/i.test(metaLine) ||                     // French
+            /\b(?:tu |su )?nota\b/i.test(metaLine) ||              // Spanish / Italian / Portuguese
+            /\bnotitie\b/i.test(metaLine) ||                        // Dutch
+            /メモ/.test(metaLine) ||                                  // Japanese
+            /메모/.test(metaLine) ||                                  // Korean
+            /\bnotatk[aię]/i.test(metaLine) ||                      // Polish
+            /заметк[аи]/i.test(metaLine) ||                          // Russian
+            /\banteckning\b/i.test(metaLine) ||                      // Swedish
+            /\bnot\b/i.test(metaLine)                                // Turkish
+        ) {
             clipType = 'note';
-        } else if (/your bookmark/i.test(metaLine) || /书签/.test(metaLine)) {
+        } else if (
+            /your bookmark/i.test(metaLine) ||                       // English
+            /书签/.test(metaLine) ||                                  // Chinese
+            /\bLesezeichen\b/i.test(metaLine) ||                    // German
+            /\bsignet\b/i.test(metaLine) ||                         // French
+            /\bmarcador\b/i.test(metaLine) ||                       // Spanish / Portuguese
+            /\bsegnalibro\b/i.test(metaLine) ||                     // Italian
+            /\bbladwijzer\b/i.test(metaLine) ||                      // Dutch
+            /ブックマーク/.test(metaLine) ||                           // Japanese
+            /북마크/.test(metaLine) ||                                 // Korean
+            /\bzakładk[aię]/i.test(metaLine) ||                     // Polish
+            /закладк[аи]/i.test(metaLine) ||                         // Russian
+            /\bbokmärke\b/i.test(metaLine) ||                       // Swedish
+            /\byer ?imi\b/i.test(metaLine)                           // Turkish
+        ) {
             clipType = 'bookmark';
-        } else if (/your highlight/i.test(metaLine) || /标注/.test(metaLine) || /高亮/.test(metaLine)) {
+        } else if (
+            /your highlight/i.test(metaLine) ||                      // English
+            /标注/.test(metaLine) || /高亮/.test(metaLine) ||         // Chinese
+            /\bMarkierung\b/i.test(metaLine) ||                     // German
+            /\bsurlignement\b/i.test(metaLine) ||                   // French
+            /\b(?:subrayado|resaltado)\b/i.test(metaLine) ||        // Spanish
+            /\bdestaque\b/i.test(metaLine) ||                       // Portuguese
+            /\bevidenziazione\b/i.test(metaLine) ||                 // Italian
+            /\bmarkering\b/i.test(metaLine) ||                      // Dutch
+            /ハイライト/.test(metaLine) ||                             // Japanese
+            /하이라이트/.test(metaLine) ||                              // Korean
+            /\bpodkreślen/i.test(metaLine) ||                        // Polish
+            /выделени[еяй]/i.test(metaLine) ||                      // Russian
+            /\bmarkering\b/i.test(metaLine) ||                      // Swedish
+            /\bvurgulama\b/i.test(metaLine)                          // Turkish
+        ) {
             clipType = 'highlight';
         }
 
-        // Extract location (English: "Location 100-110" or "Loc. 100-110"; Chinese: "位置 #100-110")
-        const locMatch = metaLine.match(/(?:location|loc\.?)\s+([\d-]+)/i) ||
+        // Extract location/position (multilingual)
+        // English: "Location 100-110" / "Loc. 100-110"
+        // German: "Pos. 2919-28"
+        // French: "Emplacement 100" / "Position 100"
+        // Spanish/Portuguese/Italian: "Posición/Posição/Posizione 100"
+        // Chinese: "位置 #100-110"
+        // Japanese/Korean: 位置
+        // Dutch: "Locatie 100" / "Positie 100"
+        const locMatch = metaLine.match(/(?:location|loc\.?|pos\.?|emplacement|posición|posição|posizione|positie|locatie)\s+([\d-]+)/i) ||
             metaLine.match(/位置\s*#?([\d-]+)/i);
         const location = locMatch ? locMatch[1] : '';
 
-        // Extract page (English: "page 42"; Chinese: "第 42 页")
-        const pageMatch = metaLine.match(/page\s+([\d-]+)/i) ||
+        // Extract page (multilingual)
+        // English: "page 42"
+        // German: "Seite 42"
+        // French: "page 42"
+        // Spanish: "página 42"
+        // Portuguese: "página 42"
+        // Italian: "pagina 42"
+        // Dutch: "pagina 42"
+        // Chinese: "第 42 页"
+        // Turkish: "sayfa 42"
+        // Polish: "strona 42"
+        // Russian: "страница 42"
+        // Swedish: "sida 42"
+        const pageMatch = metaLine.match(/(?:page|seite|página|pagina|sayfa|strona|страница|sida)\s+([\d-]+)/i) ||
             metaLine.match(/第\s*([\d-]+)\s*页/);
         const page = pageMatch ? pageMatch[1] : '';
 
-        // Extract date (English: "Added on Monday, ..."; Chinese: "添加于 ...")
+        // Extract date (multilingual)
+        // English: "Added on Monday, ..."
+        // German: "Hinzugefügt am Sonntag, ..."
+        // French: "Ajouté le ..."
+        // Spanish: "Añadido el ..."
+        // Portuguese: "Adicionado em ..."
+        // Italian: "Aggiunto il ..."
+        // Dutch: "Toegevoegd op ..."
+        // Chinese: "添加于 ..."
+        // Turkish: "Eklenme Tarihi: ..."
+        // Polish: "Dodano: ..." / "Dodano dnia ..."
+        // Russian: "Добавлено: ..."
+        // Swedish: "Tillagd den ..."
+        // Japanese: "追加日" / Korean: "추가한 날짜"
         const dateMatch = metaLine.match(/Added on\s+(.+)$/i) ||
-            metaLine.match(/添加于\s+(.+)$/);
+            metaLine.match(/Hinzugefügt am\s+(.+)$/i) ||
+            metaLine.match(/Ajouté le\s+(.+)$/i) ||
+            metaLine.match(/Añadido el\s+(.+)$/i) ||
+            metaLine.match(/Adicionado em\s+(.+)$/i) ||
+            metaLine.match(/Aggiunto il\s+(.+)$/i) ||
+            metaLine.match(/Toegevoegd op\s+(.+)$/i) ||
+            metaLine.match(/Eklenme Tarihi:?\s+(.+)$/i) ||
+            metaLine.match(/Dodano:?\s+(?:dnia\s+)?(.+)$/i) ||
+            metaLine.match(/Добавлено:?\s+(.+)$/i) ||
+            metaLine.match(/Tillagd den\s+(.+)$/i) ||
+            metaLine.match(/添加于\s+(.+)$/) ||
+            metaLine.match(/追加日\s*(.+)$/) ||
+            metaLine.match(/추가한 날짜\s*(.+)$/);
         const date = dateMatch ? dateMatch[1].trim() : '';
 
         // Content is everything after the metadata line (skip empty lines)
@@ -649,6 +737,323 @@ document.getElementById('btnViewTab').addEventListener('click', () => {
         newWin.document.close();
     }
 });
+
+// ── Toolbar: Export as PDF ──
+document.getElementById('btnExportPdf').addEventListener('click', () => {
+    const btn = document.getElementById('btnExportPdf');
+    const orig = btn.textContent;
+
+    // Build full HTML content (all clips, not just current page) respecting book selection and search filter
+    const pdfHtml = buildPdfHtml();
+    if (!pdfHtml) {
+        btn.textContent = '⚠ No clippings!';
+        setTimeout(() => btn.textContent = orig, 2000);
+        return;
+    }
+
+    btn.textContent = '⏳ Generating...';
+
+    const pdfWin = window.open('', '_blank');
+    if (!pdfWin) {
+        btn.textContent = '⚠ Popup blocked!';
+        setTimeout(() => btn.textContent = orig, 2500);
+        return;
+    }
+
+    // Determine title for the PDF
+    let pdfTitle = 'Kindle Clippings';
+    if (selectedBook) {
+        pdfTitle = selectedBook;
+    }
+
+    pdfWin.document.write(buildPdfDocument(pdfTitle, pdfHtml));
+    pdfWin.document.close();
+
+    // Wait for content to render, then trigger print
+    pdfWin.onload = () => {
+        setTimeout(() => {
+            pdfWin.print();
+            btn.textContent = orig;
+        }, 300);
+    };
+
+    // Fallback if onload doesn't fire (some browsers)
+    setTimeout(() => {
+        btn.textContent = orig;
+    }, 3000);
+});
+
+// ── Build PDF HTML content (all matching clips, ignoring pagination) ──
+function buildPdfHtml() {
+    let booksToRender = {};
+    if (selectedBook === null) {
+        booksToRender = allBooks;
+    } else if (allBooks[selectedBook]) {
+        booksToRender = { [selectedBook]: allBooks[selectedBook] };
+    }
+
+    // Apply content search filter
+    const searchText = contentSearch ? contentSearch.value.trim().toLowerCase() : '';
+    if (searchText) {
+        const filtered = {};
+        for (const [title, clips] of Object.entries(booksToRender)) {
+            const matched = clips.filter(c =>
+                (c.content && c.content.toLowerCase().includes(searchText)) ||
+                (c.attachedNote && c.attachedNote.toLowerCase().includes(searchText))
+            );
+            if (matched.length > 0) filtered[title] = matched;
+        }
+        booksToRender = filtered;
+    }
+
+    const bookTitles = Object.keys(booksToRender);
+    if (bookTitles.length === 0) return null;
+
+    let html = '';
+
+    for (const title of bookTitles) {
+        const entries = booksToRender[title];
+
+        html += `<div class="book-group">`;
+        html += `<div class="book-title-header">`;
+        html += `<span class="book-icon">📖</span>`;
+        html += `<span>${escapeHtml(title)}</span>`;
+        html += `<span class="book-count">${entries.length} clip${entries.length > 1 ? 's' : ''}</span>`;
+        html += `</div>`;
+
+        for (const clip of entries) {
+            const entryClass = clip.type === 'highlight-with-note' ? 'highlight-with-note' : clip.type;
+            html += `<div class="clip-entry ${entryClass}">`;
+            html += `<div class="clip-meta">`;
+
+            if (clip.type === 'highlight-with-note') {
+                html += `<span class="clip-type-badge hl-badge">highlight</span>`;
+                html += ` <span class="clip-type-badge nt-badge">+ note</span>`;
+            } else {
+                html += `<span class="clip-type-badge">${clip.type}</span>`;
+            }
+
+            if (clip.page) html += `<span class="clip-meta-sep"> · </span><span>Page ${escapeHtml(clip.page)}</span>`;
+            if (clip.location) html += `<span class="clip-meta-sep"> · </span><span>Loc ${escapeHtml(clip.location)}</span>`;
+            if (clip.date) html += `<span class="clip-meta-sep"> · </span><span>${escapeHtml(clip.date)}</span>`;
+            html += `</div>`;
+
+            if (clip.content) {
+                html += `<div class="clip-content">${escapeHtml(clip.content)}</div>`;
+            } else if (clip.type === 'bookmark') {
+                html += `<div class="clip-content" style="color:#999;">(bookmark)</div>`;
+            }
+
+            if (clip.attachedNote) {
+                html += `<div class="attached-note">`;
+                html += `<div class="attached-note-label">📝 Note:</div>`;
+                html += `<div class="attached-note-content">${escapeHtml(clip.attachedNote)}</div>`;
+                html += `</div>`;
+            }
+
+            html += `</div>`;
+        }
+
+        html += `</div>`;
+    }
+
+    return html;
+}
+
+// ── Build full PDF document with print-optimized styles ──
+function buildPdfDocument(title, bodyHtml) {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>${escapeHtml(title)} – Kindle Clippings</title>
+    <style>
+        /* ── Reset & Base ── */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+            padding: 20px 30px;
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+        }
+
+        /* ── PDF Header ── */
+        .pdf-header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #2c3e50;
+        }
+        .pdf-header h1 {
+            font-size: 22px;
+            color: #2c3e50;
+            margin-bottom: 4px;
+        }
+        .pdf-header .pdf-subtitle {
+            font-size: 12px;
+            color: #999;
+        }
+
+        /* ── Book Group ── */
+        .book-group {
+            margin-bottom: 20px;
+        }
+        .book-title-header {
+            font-size: 15px;
+            font-weight: 700;
+            color: #2c3e50;
+            padding: 6px 0;
+            margin-bottom: 8px;
+            border-bottom: 2px solid #3498db;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .book-title-header .book-icon { font-size: 16px; }
+        .book-title-header .book-count {
+            font-size: 10px;
+            color: #999;
+            font-weight: 400;
+            margin-left: auto;
+        }
+
+        /* ── Clip Entries ── */
+        .clip-entry {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border-left: 4px solid;
+            page-break-inside: avoid;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .clip-entry.highlight {
+            background-color: #fef9e7;
+            border-left-color: #f1c40f;
+        }
+        .clip-entry.note {
+            background-color: #eaf2f8;
+            border-left-color: #3498db;
+        }
+        .clip-entry.bookmark {
+            background-color: #f0faf0;
+            border-left-color: #27ae60;
+        }
+        .clip-entry.highlight-with-note {
+            background: linear-gradient(135deg, #fef9e7 0%, #fef9e7 70%, #eaf2f8 100%);
+            border-left-color: #f1c40f;
+            border-right: 3px solid #3498db;
+        }
+
+        /* ── Meta & Badges ── */
+        .clip-meta {
+            font-size: 10px;
+            color: #999;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .clip-meta-sep { color: #ccc; margin: 0 2px; }
+        .clip-type-badge {
+            display: inline-block;
+            padding: 1px 7px;
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .clip-entry.highlight .clip-type-badge { background: #f1c40f; color: #7d6608; }
+        .clip-entry.note .clip-type-badge { background: #3498db; color: #fff; }
+        .clip-entry.bookmark .clip-type-badge { background: #27ae60; color: #fff; }
+        .clip-entry.highlight-with-note .hl-badge { background: #f1c40f; color: #7d6608; }
+        .clip-entry.highlight-with-note .nt-badge { background: #3498db; color: #fff; }
+
+        /* ── Content ── */
+        .clip-content {
+            font-size: 13px;
+            line-height: 1.5;
+            color: #2c3e50;
+        }
+        .clip-entry.note .clip-content { font-style: italic; }
+
+        /* ── Attached Notes ── */
+        .attached-note {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px dashed #ccc;
+        }
+        .attached-note-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: #2471a3;
+            margin-bottom: 2px;
+        }
+        .attached-note-content {
+            font-size: 12px;
+            line-height: 1.4;
+            color: #2471a3;
+            font-style: italic;
+        }
+
+        /* ── PDF Footer ── */
+        .pdf-footer {
+            margin-top: 24px;
+            padding-top: 12px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            font-size: 10px;
+            color: #bbb;
+        }
+
+        /* ── Print-specific rules ── */
+        @media print {
+            body { padding: 0; }
+            .pdf-header { margin-bottom: 16px; }
+            .book-group { page-break-inside: avoid; }
+            .clip-entry { page-break-inside: avoid; }
+            .no-print { display: none !important; }
+        }
+
+        /* ── Print instruction banner (hidden in print) ── */
+        .print-instruction {
+            background: #eaf2f8;
+            border: 1px solid #3498db;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #2c3e50;
+            text-align: center;
+        }
+        .print-instruction strong { color: #2471a3; }
+
+        @media print {
+            .print-instruction { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-instruction no-print">
+        💡 <strong>To save as PDF:</strong> In the Print dialog, select <strong>"Save as PDF"</strong> as the destination, then click <strong>Save</strong>.
+    </div>
+
+    <div class="pdf-header">
+        <h1>📚 ${escapeHtml(title)}</h1>
+        <div class="pdf-subtitle">Exported from Kindle Clipping Reader · ${new Date().toLocaleDateString()}</div>
+    </div>
+
+    ${bodyHtml}
+
+    <div class="pdf-footer">
+        Generated by Kindle Clipping Reader · ${new Date().toLocaleDateString()}
+    </div>
+</body>
+</html>`;
+}
 
 // ── Utility Functions ──
 function escapeHtml(text) {

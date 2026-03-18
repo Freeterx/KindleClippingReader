@@ -1,7 +1,7 @@
 {
   "name": "Kindle Clipping Reader",
-  "description": "Import, browse, and organize Kindle clippings with highlights, notes, and bookmarks. Copy to clipboard.",
-  "version": "1.1",
+  "description": "Import, browse, and organize Kindle clippings with highlights, notes, and bookmarks. Copy to clipboard. Export to PDF.",
+  "version": "1.2",
   "manifest_version": 3,
     "permissions": [],
   
