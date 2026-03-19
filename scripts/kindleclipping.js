@@ -862,6 +862,7 @@ function buildPdfHtml() {
 
 // ── Build full PDF document with print-optimized styles ──
 function buildPdfDocument(title, bodyHtml) {
+    const c = getCurrentColors();
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -930,21 +931,21 @@ function buildPdfDocument(title, bodyHtml) {
             print-color-adjust: exact;
         }
         .clip-entry.highlight {
-            background-color: #fef9e7;
-            border-left-color: #f1c40f;
+            background-color: ${c.hlBg};
+            border-left-color: ${c.hlBorder};
         }
         .clip-entry.note {
-            background-color: #eaf2f8;
-            border-left-color: #3498db;
+            background-color: ${c.ntBg};
+            border-left-color: ${c.ntBorder};
         }
         .clip-entry.bookmark {
-            background-color: #f0faf0;
-            border-left-color: #27ae60;
+            background-color: ${c.bkBg};
+            border-left-color: ${c.bkBorder};
         }
         .clip-entry.highlight-with-note {
-            background: linear-gradient(135deg, #fef9e7 0%, #fef9e7 70%, #eaf2f8 100%);
-            border-left-color: #f1c40f;
-            border-right: 3px solid #3498db;
+            background: linear-gradient(135deg, ${c.hlBg} 0%, ${c.hlBg} 70%, ${c.ntBg} 100%);
+            border-left-color: ${c.hlBorder};
+            border-right: 3px solid ${c.ntBorder};
         }
 
         /* ── Meta & Badges ── */
@@ -966,11 +967,11 @@ function buildPdfDocument(title, bodyHtml) {
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        .clip-entry.highlight .clip-type-badge { background: #f1c40f; color: #7d6608; }
-        .clip-entry.note .clip-type-badge { background: #3498db; color: #fff; }
-        .clip-entry.bookmark .clip-type-badge { background: #27ae60; color: #fff; }
-        .clip-entry.highlight-with-note .hl-badge { background: #f1c40f; color: #7d6608; }
-        .clip-entry.highlight-with-note .nt-badge { background: #3498db; color: #fff; }
+        .clip-entry.highlight .clip-type-badge { background: ${c.hlBadgeBg}; color: ${c.hlBadgeText}; }
+        .clip-entry.note .clip-type-badge { background: ${c.ntBadgeBg}; color: ${c.ntBadgeText}; }
+        .clip-entry.bookmark .clip-type-badge { background: ${c.bkBadgeBg}; color: ${c.bkBadgeText}; }
+        .clip-entry.highlight-with-note .hl-badge { background: ${c.hlBadgeBg}; color: ${c.hlBadgeText}; }
+        .clip-entry.highlight-with-note .nt-badge { background: ${c.ntBadgeBg}; color: ${c.ntBadgeText}; }
 
         /* ── Content ── */
         .clip-content {
@@ -978,7 +979,10 @@ function buildPdfDocument(title, bodyHtml) {
             line-height: 1.5;
             color: #2c3e50;
         }
-        .clip-entry.note .clip-content { font-style: italic; }
+        .clip-entry.highlight .clip-content { color: ${c.hlText}; }
+        .clip-entry.note .clip-content { font-style: italic; color: ${c.ntText}; }
+        .clip-entry.bookmark .clip-content { color: ${c.bkText}; }
+        .clip-entry.highlight-with-note .clip-content { color: ${c.hlText}; }
 
         /* ── Attached Notes ── */
         .attached-note {
@@ -989,13 +993,13 @@ function buildPdfDocument(title, bodyHtml) {
         .attached-note-label {
             font-size: 10px;
             font-weight: 600;
-            color: #2471a3;
+            color: ${c.ntText};
             margin-bottom: 2px;
         }
         .attached-note-content {
             font-size: 12px;
             line-height: 1.4;
-            color: #2471a3;
+            color: ${c.ntText};
             font-style: italic;
         }
 
@@ -1020,8 +1024,8 @@ function buildPdfDocument(title, bodyHtml) {
 
         /* ── Print instruction banner (hidden in print) ── */
         .print-instruction {
-            background: #eaf2f8;
-            border: 1px solid #3498db;
+            background: ${c.ntBg};
+            border: 1px solid ${c.ntBorder};
             border-radius: 6px;
             padding: 12px 16px;
             margin-bottom: 20px;
@@ -1029,7 +1033,7 @@ function buildPdfDocument(title, bodyHtml) {
             color: #2c3e50;
             text-align: center;
         }
-        .print-instruction strong { color: #2471a3; }
+        .print-instruction strong { color: ${c.ntText}; }
 
         @media print {
             .print-instruction { display: none; }
@@ -1053,6 +1057,29 @@ function buildPdfDocument(title, bodyHtml) {
     </div>
 </body>
 </html>`;
+}
+
+// ── Get current color values from CSS custom properties ──
+function getCurrentColors() {
+    const root = document.documentElement;
+    const get = (varName, fallback) => getComputedStyle(root).getPropertyValue(varName).trim() || fallback;
+    return {
+        hlBg: get('--hl-bg', '#fef9e7'),
+        hlBorder: get('--hl-border', '#f1c40f'),
+        hlText: get('--hl-text', '#2c3e50'),
+        hlBadgeBg: get('--hl-badge-bg', '#f1c40f'),
+        hlBadgeText: get('--hl-badge-text', '#7d6608'),
+        ntBg: get('--nt-bg', '#eaf2f8'),
+        ntBorder: get('--nt-border', '#3498db'),
+        ntText: get('--nt-text', '#2471a3'),
+        ntBadgeBg: get('--nt-badge-bg', '#3498db'),
+        ntBadgeText: get('--nt-badge-text', '#ffffff'),
+        bkBg: get('--bk-bg', '#f0faf0'),
+        bkBorder: get('--bk-border', '#27ae60'),
+        bkText: get('--bk-text', '#2c3e50'),
+        bkBadgeBg: get('--bk-badge-bg', '#27ae60'),
+        bkBadgeText: get('--bk-badge-text', '#ffffff'),
+    };
 }
 
 // ── Utility Functions ──
@@ -1103,51 +1130,40 @@ function buildInlineStyledHtml() {
     const bookTitles = Object.keys(booksToRender);
     if (bookTitles.length === 0) return '<p>No clippings to copy.</p>';
 
+    const c = getCurrentColors();
     let html = '<div style="font-family:Segoe UI,Tahoma,Geneva,Verdana,sans-serif;color:#333;">';
 
     for (const title of bookTitles) {
         const entries = booksToRender[title];
 
-        // Book group
         html += '<div style="margin-bottom:24px;">';
-
-        // Book title header
         html += `<div style="font-size:16px;font-weight:700;color:#2c3e50;padding:8px 0;margin-bottom:8px;border-bottom:2px solid #3498db;">`;
-        html += `<span style="font-size:18px;">📖</span> `;
-        html += `${escapeHtml(title)} `;
-        html += `<span style="font-size:11px;color:#999;font-weight:400;">${entries.length} clip${entries.length > 1 ? 's' : ''}</span>`;
-        html += `</div>`;
+        html += `<span style="font-size:18px;">📖</span> ${escapeHtml(title)} `;
+        html += `<span style="font-size:11px;color:#999;font-weight:400;">${entries.length} clip${entries.length > 1 ? 's' : ''}</span></div>`;
 
         for (const clip of entries) {
-            // Determine entry background and border colors
-            let bgColor, borderLeftColor, borderRightStyle = '';
+            let bgColor, borderLeftColor, borderRightStyle = '', contentColor;
             if (clip.type === 'highlight-with-note') {
-                bgColor = '#fef9e7';
-                borderLeftColor = '#f1c40f';
-                borderRightStyle = 'border-right:3px solid #3498db;';
+                bgColor = c.hlBg; borderLeftColor = c.hlBorder; contentColor = c.hlText;
+                borderRightStyle = `border-right:3px solid ${c.ntBorder};`;
             } else if (clip.type === 'highlight') {
-                bgColor = '#fef9e7';
-                borderLeftColor = '#f1c40f';
+                bgColor = c.hlBg; borderLeftColor = c.hlBorder; contentColor = c.hlText;
             } else if (clip.type === 'note') {
-                bgColor = '#eaf2f8';
-                borderLeftColor = '#3498db';
-            } else { // bookmark
-                bgColor = '#f0faf0';
-                borderLeftColor = '#27ae60';
+                bgColor = c.ntBg; borderLeftColor = c.ntBorder; contentColor = c.ntText;
+            } else {
+                bgColor = c.bkBg; borderLeftColor = c.bkBorder; contentColor = c.bkText;
             }
 
             html += `<div style="margin-bottom:12px;padding:10px 14px;border-radius:6px;border-left:4px solid ${borderLeftColor};background-color:${bgColor};${borderRightStyle}">`;
-
-            // Meta line
             html += `<div style="font-size:11px;color:#999;margin-bottom:6px;">`;
             if (clip.type === 'highlight-with-note') {
-                html += `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;background:#f1c40f;color:#7d6608;">highlight</span> `;
-                html += `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;background:#3498db;color:#fff;">+ note</span>`;
+                html += `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;background:${c.hlBadgeBg};color:${c.hlBadgeText};">highlight</span> `;
+                html += `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;background:${c.ntBadgeBg};color:${c.ntBadgeText};">+ note</span>`;
             } else {
                 let badgeBg, badgeColor;
-                if (clip.type === 'highlight') { badgeBg = '#f1c40f'; badgeColor = '#7d6608'; }
-                else if (clip.type === 'note') { badgeBg = '#3498db'; badgeColor = '#fff'; }
-                else { badgeBg = '#27ae60'; badgeColor = '#fff'; }
+                if (clip.type === 'highlight') { badgeBg = c.hlBadgeBg; badgeColor = c.hlBadgeText; }
+                else if (clip.type === 'note') { badgeBg = c.ntBadgeBg; badgeColor = c.ntBadgeText; }
+                else { badgeBg = c.bkBadgeBg; badgeColor = c.bkBadgeText; }
                 html += `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;background:${badgeBg};color:${badgeColor};">${clip.type}</span>`;
             }
             if (clip.page) html += `<span style="color:#ccc;margin:0 2px;"> · </span><span>Page ${escapeHtml(clip.page)}</span>`;
@@ -1155,26 +1171,22 @@ function buildInlineStyledHtml() {
             if (clip.date) html += `<span style="color:#ccc;margin:0 2px;"> · </span><span>${escapeHtml(clip.date)}</span>`;
             html += `</div>`;
 
-            // Content
             if (clip.content) {
                 const italicStyle = clip.type === 'note' ? 'font-style:italic;' : '';
-                html += `<div style="font-size:14px;line-height:1.5;color:#2c3e50;${italicStyle}">${escapeHtml(clip.content)}</div>`;
+                html += `<div style="font-size:14px;line-height:1.5;color:${contentColor};${italicStyle}">${escapeHtml(clip.content)}</div>`;
             } else if (clip.type === 'bookmark') {
                 html += `<div style="font-size:14px;line-height:1.5;color:#999;">(bookmark)</div>`;
             }
 
-            // Attached note
             if (clip.attachedNote) {
                 html += `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #ccc;">`;
-                html += `<div style="font-size:11px;font-weight:600;color:#2471a3;margin-bottom:3px;">📝 Note:</div>`;
-                html += `<div style="font-size:13px;line-height:1.5;color:#2471a3;font-style:italic;">${escapeHtml(clip.attachedNote)}</div>`;
+                html += `<div style="font-size:11px;font-weight:600;color:${c.ntText};margin-bottom:3px;">📝 Note:</div>`;
+                html += `<div style="font-size:13px;line-height:1.5;color:${c.ntText};font-style:italic;">${escapeHtml(clip.attachedNote)}</div>`;
                 html += `</div>`;
             }
-
-            html += `</div>`; // close clip-entry
+            html += `</div>`;
         }
-
-        html += `</div>`; // close book-group
+        html += `</div>`;
     }
 
     html += '</div>';
@@ -1182,29 +1194,33 @@ function buildInlineStyledHtml() {
 }
 
 function getClipStyles() {
+    const c = getCurrentColors();
     return `
         .book-group { margin-bottom: 24px; }
         .book-title-header { font-size: 16px; font-weight: 700; color: #2c3e50; padding: 8px 0; margin-bottom: 8px; border-bottom: 2px solid #3498db; display: flex; align-items: center; gap: 8px; }
         .book-title-header .book-icon { font-size: 18px; }
         .book-title-header .book-count { font-size: 11px; color: #999; font-weight: 400; margin-left: auto; }
         .clip-entry { margin-bottom: 12px; padding: 10px 14px; border-radius: 6px; border-left: 4px solid; }
-        .clip-entry.highlight { background-color: #fef9e7; border-left-color: #f1c40f; }
-        .clip-entry.note { background-color: #eaf2f8; border-left-color: #3498db; }
-        .clip-entry.bookmark { background-color: #f0faf0; border-left-color: #27ae60; }
+        .clip-entry.highlight { background-color: ${c.hlBg}; border-left-color: ${c.hlBorder}; }
+        .clip-entry.note { background-color: ${c.ntBg}; border-left-color: ${c.ntBorder}; }
+        .clip-entry.bookmark { background-color: ${c.bkBg}; border-left-color: ${c.bkBorder}; }
         .clip-meta { font-size: 11px; color: #999; margin-bottom: 6px; }
         .clip-meta > span { margin-right: 4px; }
         .clip-meta-sep { color: #ccc; }
         .clip-type-badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-        .clip-entry.highlight .clip-type-badge { background: #f1c40f; color: #7d6608; }
-        .clip-entry.note .clip-type-badge { background: #3498db; color: #fff; }
-        .clip-entry.bookmark .clip-type-badge { background: #27ae60; color: #fff; }
+        .clip-entry.highlight .clip-type-badge { background: ${c.hlBadgeBg}; color: ${c.hlBadgeText}; }
+        .clip-entry.note .clip-type-badge { background: ${c.ntBadgeBg}; color: ${c.ntBadgeText}; }
+        .clip-entry.bookmark .clip-type-badge { background: ${c.bkBadgeBg}; color: ${c.bkBadgeText}; }
         .clip-content { font-size: 14px; line-height: 1.5; color: #2c3e50; }
-        .clip-entry.note .clip-content { font-style: italic; }
-        .clip-entry.highlight-with-note { background: linear-gradient(135deg, #fef9e7 0%, #fef9e7 70%, #eaf2f8 100%); border-left-color: #f1c40f; border-right: 3px solid #3498db; }
-        .clip-entry.highlight-with-note .hl-badge { background: #f1c40f; color: #7d6608; }
-        .clip-entry.highlight-with-note .nt-badge { background: #3498db; color: #fff; }
+        .clip-entry.highlight .clip-content { color: ${c.hlText}; }
+        .clip-entry.note .clip-content { font-style: italic; color: ${c.ntText}; }
+        .clip-entry.bookmark .clip-content { color: ${c.bkText}; }
+        .clip-entry.highlight-with-note { background: linear-gradient(135deg, ${c.hlBg} 0%, ${c.hlBg} 70%, ${c.ntBg} 100%); border-left-color: ${c.hlBorder}; border-right: 3px solid ${c.ntBorder}; }
+        .clip-entry.highlight-with-note .hl-badge { background: ${c.hlBadgeBg}; color: ${c.hlBadgeText}; }
+        .clip-entry.highlight-with-note .nt-badge { background: ${c.ntBadgeBg}; color: ${c.ntBadgeText}; }
+        .clip-entry.highlight-with-note .clip-content { color: ${c.hlText}; }
         .attached-note { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc; }
-        .attached-note-label { font-size: 11px; font-weight: 600; color: #2471a3; margin-bottom: 3px; }
-        .attached-note-content { font-size: 13px; line-height: 1.5; color: #2471a3; font-style: italic; }
+        .attached-note-label { font-size: 11px; font-weight: 600; color: ${c.ntText}; margin-bottom: 3px; }
+        .attached-note-content { font-size: 13px; line-height: 1.5; color: ${c.ntText}; font-style: italic; }
     `;
 }
