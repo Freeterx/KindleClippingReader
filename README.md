@@ -5,3 +5,5 @@ A **Chrome-based extension** that lets you easily **import, browse, and organize
 Quickly **export selected highlights to OneNote or copy them to the clipboard**, making it easy to review, share, or reuse your best ideas.
 
 **Simple. Fast. Built for Kindle readers.** ✨
+ 
+Install it from here: https://chromewebstore.google.com/detail/kindle-clipping-reader/piabahadiglojgafjfmlcedcahicclcc
