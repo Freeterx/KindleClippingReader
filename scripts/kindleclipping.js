@@ -173,7 +173,7 @@ function parseClippings(text) {
             metaLine.match(/Ajouté le\s+(.+)$/i) ||
             metaLine.match(/Añadido el\s+(.+)$/i) ||
             metaLine.match(/Adicionado em\s+(.+)$/i) ||
-            metaLine.match(/Aggiunto il\s+(.+)$/i) ||
+            metaLine.match(/Aggiunto (?:il|in data)\s+(.+)$/i) ||
             metaLine.match(/Toegevoegd op\s+(.+)$/i) ||
             metaLine.match(/Eklenme Tarihi:?\s+(.+)$/i) ||
             metaLine.match(/Dodano:?\s+(?:dnia\s+)?(.+)$/i) ||
